@@ -15,13 +15,22 @@ set(RADONFRAMEWORK_BUILD_SYSTEMTEST OFF CACHE BOOL "" FORCE)
 set(RADONFRAMEWORK_BUILD_RESOURCETEST OFF CACHE BOOL "" FORCE)
 Integrate(RADONFRAMEWORK "Radon framework" "RADONFRAMEWORK_HOME")
 
+rcf_addlocation(BROTLIENCODER "git" "https://github.com/google/brotli.git")
+Integrate(BROTLIENCODER "BrotliEncoder" "")
+AddSourceDirectoryRecursive(srclist "${BROTLIENCODER_LOCATION}/enc" "Source")
+AddHeaderDirectoryRecursive(hdrlist "${BROTLIENCODER_LOCATION}/enc" "Includes")
+set(BROTLIENCODER_FILES ${srclist} ${hdrlist})
+Generate(MODULE BROTLIENCODER BrotliEncoder "Libraries")
+AddPublicInclude(BROTLIENCODER "${BROTLIENCODER_LOCATION}/enc")
+Finalize(BROTLIENCODER)
+
 # create a static library
 AddSourceDirectoryRecursive(srclist "src/" "Source")
 AddHeaderDirectoryRecursive(hdrlist "include/Xenon" "Includes")
 set(LIBXENON_FILES ${srclist} ${hdrlist})
 Generate(MODULE LIBXENON LibXenon "Framework")
 target_include_directories(LibXenon PRIVATE src/)
-AddDependency(LIBXENON RadonFramework)
+AddDependency(LIBXENON RadonFramework BrotliEncoder)
 AddPublicInclude(LIBXENON "${Xenon_SOURCE_DIR}/include")
 Finalize(LIBXENON)
 
