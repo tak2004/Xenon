@@ -83,9 +83,47 @@ void DeInterleave(RF_Collect::Array<RF_Mem::AutoPointerArray<RF_Type::UInt8> >& 
     });
 }
 
-void DyadicDecomposition(RF_Collect::Array<RF_Mem::AutoPointerArray<RF_Type::UInt8> >& Buffers,
+int memcmp_signed;
+
+int unsigned_memcmp(void *p1, void *p2, unsigned int i)
+{
+    unsigned char *pc1 = (unsigned char *)p1;
+    unsigned char *pc2 = (unsigned char *)p2;
+    while(i--) {
+        if(*pc1 < *pc2)
+            return -1;
+        else if(*pc1++ > *pc2++)
+            return 1;
+    }
+    return 0;
+}
+
+int bounded_compare(const unsigned int *i1, const unsigned int *i2)
+{
+    static int ticker = 0;
+
+    unsigned int l1 = (unsigned int)(length - *i1);
+    unsigned int l2 = (unsigned int)(length - *i2);
+    int result;
+    if(memcmp_signed)
+        result = unsigned_memcmp(buffer + *i1,
+        buffer + *i2,
+        l1 < l2 ? l1 : l2);
+    else
+        result = memcmp(buffer + *i1,
+        buffer + *i2,
+        l1 < l2 ? l1 : l2);
+    if(result == 0)
+        return l2 - l1;
+    else
+        return result;
+};
+
+void BurrowWheeler(RF_Collect::Array<RF_Mem::AutoPointerArray<RF_Type::UInt8> >& Buffers,
                   RF_Type::Size Elements)
 {
+    static RF_Type::UInt32 BLOCK_SIZE = 200000;
+
     struct Channel
     {
         void Init(RF_Type::UInt8* Data, RF_Type::Size Blocks)
@@ -109,10 +147,28 @@ void DyadicDecomposition(RF_Collect::Array<RF_Mem::AutoPointerArray<RF_Type::UIn
     channels(9).Init(Buffers(11).Get(), Elements);
 
     RF_Algo::ForEach(channels, [](RF_Collect::Array<Channel>::EnumeratorType& Enum) {
+        RF_Type::Int32 indices[BLOCK_SIZE+1];
         RF_Type::UInt8* blockIn = Enum->data;
-        for(RF_Type::Size i = 0; i < Enum->blocks; ++i)
+        RF_Type::Size rounds = ((Enum->blocks - 1) / BLOCK_SIZE) + 1;
+        for(RF_Type::Size i = 0; i < rounds; ++i)
         {
-            blockIn[i] = blockIn[i];
+            RF_Type::Size length = BLOCK_SIZE;
+            if(i == rounds-1)
+                length = Enum->blocks % BLOCK_SIZE;
+            for (RF_Type::Size j = 0; j <= length; ++j)
+            {
+                indices[j] = j;
+            }
+            qsort(indices, length +1, 4, bounded_compare);
+
+            RF_Type::UInt32 first, last;
+            for (j = 0;j <= length; ++j)
+            {
+                if(indices[j]==1)
+                    first = j;
+                if(indices[j]==0)
+                    last = j;
+            }
         }
     });
 }
